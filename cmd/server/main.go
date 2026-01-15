@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"ratelimiter/pkg/ratelimit"
 	"sync"
 	"time"
@@ -35,9 +36,12 @@ func main() {
 	http.HandleFunc("/api/configure", handleConfigure)
 	http.HandleFunc("/api/request", handleRequest)
 
-	port := ":8080"
-	fmt.Printf("Server starting on http://localhost%s...\n", port)
-	log.Fatal(http.ListenAndServe(port, nil))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	fmt.Printf("Server starting on port %s...\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func handleConfigure(w http.ResponseWriter, r *http.Request) {
