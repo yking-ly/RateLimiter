@@ -1,0 +1,15 @@
+# Binaries and OS specific
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+.DS_Store
+Thumbs.db
+
+# Dependencies
+vendor/
+
+# User requested exclusion
+cmd/simulation/

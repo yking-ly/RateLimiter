@@ -1,0 +1,12 @@
+.git
+.gitignore
+
+.vscode
+.idea
+
+*.exe
+*.dll
+*.so
+bin/
+dist/
+build/

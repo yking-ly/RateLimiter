@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Limiter Simulator</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --error: #ef4444;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .card-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-main);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        select,
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            color: white;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        select:focus,
+        input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        button.primary-btn {
+            width: 100%;
+            padding: 0.85rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            font-size: 1rem;
+        }
+
+        button.primary-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.primary-btn:active {
+            transform: scale(0.98);
+        }
+
+        .viz-area {
+            position: relative;
+            height: 400px;
+            background-color: #0f172a;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .viz-info {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            color: var(--text-sub);
+            font-family: monospace;
+        }
+
+        .request-dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            animation: flowLeft 4s linear forwards;
+        }
+
+        .request-dot.allowed {
+            background-color: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .request-dot.denied {
+            background-color: var(--error);
+            box-shadow: 0 0 8px var(--error);
+        }
+
+        @keyframes flowLeft {
+            0% {
+                right: 0;
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                right: 100%;
+                opacity: 0;
+            }
+        }
+
+        .sim-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .val-success {
+            color: var(--success);
+        }
+
+        .val-error {
+            color: var(--error);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Rate Limiter Playground</h1>
+
+        <div class="dashboard">
+            <div class="card">
+                <div class="card-header">Configuration</div>
+
+                <div class="control-group">
+                    <label>Algorithm</label>
+                    <select id="algoSelect" onchange="updateForm()">
+                        <option value="token_bucket">Token Bucket</option>
+                        <option value="leaky_bucket">Leaky Bucket</option>
+                        <option value="fixed_window">Fixed Window Counter</option>
+                        <option value="sliding_log">Sliding Window Log</option>
+                        <option value="sliding_counter">Sliding Window Counter</option>
+                        <option value="concurrent">Concurrent Limiter</option>
+                    </select>
+                </div>
+
+                <div id="params-container">
+                </div>
+
+                <button class="primary-btn" onclick="applyConfig()">Apply Configuration</button>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Simulation Output</div>
+
+                <div class="sim-controls">
+                    <div class="stat-box">
+                        <span class="stat-value val-success" id="s-allowed">0</span>
+                        <span class="stat-label">Allowed</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-value val-error" id="s-denied">0</span>
+                        <span class="stat-label">Denied</span>
+                    </div>
+                </div>
+
+                <div
+                    style="margin-top: 1.5rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--text-sub)">Live Request Stream</span>
+                    <div>
+                        <button class="primary-btn"
+                            style="width: auto; padding: 0.5rem 1rem; background-color: #475569;"
+                            onclick="startSpike()">Auto-Spike (10 req)</button>
+                        <button class="primary-btn" style="width: auto; padding: 0.5rem 1rem;"
+                            onclick="sendRequest()">Single Request</button>
+                    </div>
+                </div>
+
+                <div class="viz-area" id="vizArea">
+                    <div class="viz-info">Time -></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const paramsContainer = document.getElementById('params-container');
+        let stats = { allowed: 0, denied: 0 };
+
+        const formSchemas = {
+            token_bucket: [
+                { id: 'rate', label: 'Rate (tokens/sec)', type: 'number', value: 2 },
+                { id: 'capacity', label: 'Capacity (tokens)', type: 'number', value: 5 }
+            ],
+            leaky_bucket: [
+                { id: 'rate', label: 'Leak Rate (req/sec)', type: 'number', value: 2 },
+                { id: 'capacity', label: 'Bucket Capacity', type: 'number', value: 5 }
+            ],
+            fixed_window: [
+                { id: 'limit', label: 'Limit (req/window)', type: 'number', value: 5 },
+                { id: 'windowSecs', label: 'Window Size (sec)', type: 'number', value: 1 }
+            ],
+            sliding_log: [
+                { id: 'limit', label: 'Limit', type: 'number', value: 5 },
+                { id: 'windowSecs', label: 'Window Size (sec)', type: 'number', value: 1 }
+            ],
+            sliding_counter: [
+                { id: 'limit', label: 'Limit', type: 'number', value: 5 },
+                { id: 'windowSecs', label: 'Window Size (sec)', type: 'number', value: 1 }
+            ],
+            concurrent: [
+                { id: 'limit', label: 'Max Concurrent Requests', type: 'number', value: 3 }
+            ]
+        };
+
+        function updateForm() {
+            const algo = document.getElementById('algoSelect').value;
+            const schema = formSchemas[algo];
+
+            paramsContainer.innerHTML = '';
+
+            schema.forEach(field => {
+                const div = document.createElement('div');
+                div.className = 'control-group';
+                div.innerHTML = `
+                    <label>${field.label}</label>
+                    <input type="${field.type}" id="${field.id}" value="${field.value}">
+                `;
+                paramsContainer.appendChild(div);
+            });
+        }
+
+        async function applyConfig() {
+            const algo = document.getElementById('algoSelect').value;
+            const schema = formSchemas[algo];
+
+            const payload = { type: algo };
+            schema.forEach(field => {
+                payload[field.id] = parseFloat(document.getElementById(field.id).value);
+            });
+
+            try {
+                const res = await fetch('/api/configure', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                console.log(data.message);
+
+                stats = { allowed: 0, denied: 0 };
+                updateStats();
+                document.getElementById('vizArea').innerHTML = '<div class="viz-info">Time -></div>';
+
+            } catch (e) {
+                console.error(e);
+                alert("Error configuring limiter");
+            }
+        }
+
+        async function sendRequest() {
+            try {
+                const res = await fetch('/api/request', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.allowed) {
+                    stats.allowed++;
+                    createDot('allowed');
+                } else {
+                    stats.denied++;
+                    createDot('denied');
+                }
+                updateStats();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function createDot(status) {
+            const dot = document.createElement('div');
+            dot.className = `request-dot ${status}`;
+
+            const y = 20 + Math.random() * (400 - 40);
+            dot.style.top = `${y}px`;
+
+            document.getElementById('vizArea').appendChild(dot);
+
+            setTimeout(() => {
+                dot.remove();
+            }, 4000);
+        }
+
+        function updateStats() {
+            document.getElementById('s-allowed').innerText = stats.allowed;
+            document.getElementById('s-denied').innerText = stats.denied;
+        }
+
+        function startSpike() {
+            let count = 0;
+            const interval = setInterval(() => {
+                sendRequest();
+                count++;
+                if (count >= 10) clearInterval(interval);
+            }, 50);
+        }
+
+        updateForm();
+        applyConfig();
+
+    </script>
+</body>
+
+</html>
